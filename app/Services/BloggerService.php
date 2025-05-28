@@ -11,72 +11,63 @@ use Illuminate\Support\Facades\Log;
 class BloggerService
 {
     protected $client;
-    protected $blogger;
+    protected $service;
     protected $user;
-    protected $blogId;
 
-    /**
-     * Create a new BloggerService instance.
-     */
     public function __construct(User $user)
     {
         $this->user = $user;
-        $this->initializeGoogleClient();
+        $this->initializeClient();
     }
 
     /**
-     * Initialize the Google Client with user's OAuth token.
+     * Initialize the Google Client with OAuth token.
      */
-    protected function initializeGoogleClient()
+    protected function initializeClient(): void
     {
-        try {
-            $this->client = new Google_Client();
-            $this->client->setClientId(config('services.google.client_id'));
-            $this->client->setClientSecret(config('services.google.client_secret'));
-            $this->client->setRedirectUri(config('services.google.redirect'));
-            $this->client->setAccessType('offline');
-            $this->client->setScopes(['https://www.googleapis.com/auth/blogger']);
+        $this->client = new Google_Client();
+        $this->client->setAuthConfig(config('services.google'));
+        $this->client->addScope('https://www.googleapis.com/auth/blogger');
 
-            // Set the access token from the database
-            if ($this->user->oauthToken) {
-                $this->client->setAccessToken([
-                    'access_token' => $this->user->oauthToken->access_token,
-                    'refresh_token' => $this->user->oauthToken->refresh_token,
-                    'token_type' => $this->user->oauthToken->token_type,
-                    'expires_in' => now()->diffInSeconds($this->user->oauthToken->expires_at),
+        if ($token = $this->user->oauthToken) {
+            $this->client->setAccessToken($token->access_token);
+
+            if ($this->client->isAccessTokenExpired()) {
+                $newToken = $this->client->fetchAccessTokenWithRefreshToken($token->refresh_token);
+                $token->update([
+                    'access_token' => $newToken['access_token'],
+                    'expires_at' => now()->addSeconds($newToken['expires_in']),
                 ]);
             }
-
-            $this->blogger = new Google_Service_Blogger($this->client);
-        } catch (\Exception $e) {
-            Log::error('Failed to initialize Google Client: ' . $e->getMessage());
-            throw $e;
         }
+
+        $this->service = new Google_Service_Blogger($this->client);
     }
 
     /**
      * Create a new blog post.
      */
-    public function createPost(Post $post)
+    public function createPost(Post $post): void
     {
         try {
             $blogPost = new \Google_Service_Blogger_Post();
             $blogPost->setTitle($post->title);
             $blogPost->setContent($post->content);
 
-            $createdPost = $this->blogger->posts->insert($this->getBlogId(), $blogPost);
+            $createdPost = $this->service->posts->insert(
+                config('services.google.blog_id'),
+                $blogPost
+            );
 
-            // Update local post with Blogger post ID
             $post->update([
                 'blogger_post_id' => $createdPost->getId(),
                 'status' => 'posted',
                 'published_at' => now(),
             ]);
 
-            return $createdPost;
+            Log::info("Post {$post->id} published to Blogger successfully.");
         } catch (\Exception $e) {
-            Log::error('Failed to create blog post: ' . $e->getMessage());
-            $post->update(['status' => 'failed']);
+            Log::error("Failed to publish post {$post->id} to Blogger: " . $e->getMessage());
             throw $e;
         }
     }
@@ -84,29 +75,27 @@ class BloggerService
     /**
      * Update an existing blog post.
      */
-    public function updatePost(Post $post)
+    public function updatePost(Post $post): void
     {
         try {
-            if (!$post->blogger_post_id) {
-                throw new \Exception('Post has no Blogger ID');
-            }
-
             $blogPost = new \Google_Service_Blogger_Post();
             $blogPost->setTitle($post->title);
             $blogPost->setContent($post->content);
 
-            $updatedPost = $this->blogger->posts->update(
-                $this->getBlogId(),
+            $this->service->posts->update(
+                config('services.google.blog_id'),
                 $post->blogger_post_id,
                 $blogPost
             );
 
-            $post->update(['status' => 'posted']);
+            $post->update([
+                'status' => 'posted',
+                'published_at' => now(),
+            ]);
 
-            return $updatedPost;
+            Log::info("Post {$post->id} updated on Blogger successfully.");
         } catch (\Exception $e) {
-            Log::error('Failed to update blog post: ' . $e->getMessage());
-            $post->update(['status' => 'failed']);
+            Log::error("Failed to update post {$post->id} on Blogger: " . $e->getMessage());
             throw $e;
         }
     }
@@ -114,46 +103,44 @@ class BloggerService
     /**
      * Delete a blog post.
      */
-    public function deletePost(Post $post)
+    public function deletePost(Post $post): void
     {
         try {
-            if (!$post->blogger_post_id) {
-                throw new \Exception('Post has no Blogger ID');
+            if ($post->blogger_post_id) {
+                $this->service->posts->delete(
+                    config('services.google.blog_id'),
+                    $post->blogger_post_id
+                );
             }
 
-            $this->blogger->posts->delete(
-                $this->getBlogId(),
-                $post->blogger_post_id
-            );
-
             $post->delete();
-
-            return true;
+            Log::info("Post {$post->id} deleted from Blogger successfully.");
         } catch (\Exception $e) {
-            Log::error('Failed to delete blog post: ' . $e->getMessage());
+            Log::error("Failed to delete post {$post->id} from Blogger: " . $e->getMessage());
             throw $e;
         }
     }
 
     /**
-     * Get the user's blog ID.
+     * Publish a scheduled post.
      */
-    protected function getBlogId()
+    public function publishScheduledPost(Post $post): void
     {
-        if (!$this->blogId) {
-            try {
-                $blogs = $this->blogger->blogs->listByUser('self');
-                if ($blogs->getItems()) {
-                    $this->blogId = $blogs->getItems()[0]->getId();
-                } else {
-                    throw new \Exception('No blogs found for this user');
-                }
-            } catch (\Exception $e) {
-                Log::error('Failed to get blog ID: ' . $e->getMessage());
-                throw $e;
+        try {
+            if ($post->blogger_post_id) {
+                $this->updatePost($post);
+            } else {
+                $this->createPost($post);
             }
-        }
 
-        return $this->blogId;
+            if ($post->scheduledPost) {
+                $post->scheduledPost->markAsCompleted();
+            }
+        } catch (\Exception $e) {
+            if ($post->scheduledPost) {
+                $post->scheduledPost->markAsFailed($e->getMessage());
+            }
+            throw $e;
+        }
     }
 }

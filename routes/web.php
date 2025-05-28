@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\ScheduledPostController;
 use App\Http\Controllers\ContentGeneratorController;
 
 /*
@@ -53,6 +54,33 @@ Route::middleware(['auth', 'oauth.valid'])->group(function () {
         Route::post('/content', [ContentGeneratorController::class, 'generateContent'])->name('generate');
         Route::post('/post', [ContentGeneratorController::class, 'generatePost'])->name('post');
     });
+
+    // Analytics Routes
+    Route::prefix('analytics')->name('analytics.')->group(function () {
+        Route::get('/', [AnalyticsController::class, 'index'])->name('index');
+        Route::get('/posts/{post}', [AnalyticsController::class, 'show'])->name('show');
+        Route::post('/posts/{post}/sync', [AnalyticsController::class, 'sync'])->name('sync');
+        Route::get('/chart-data', [AnalyticsController::class, 'getChartData'])->name('chart-data');
+        Route::get('/export', [AnalyticsController::class, 'export'])->name('export');
+    });
+
+    // Notification Routes
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationsController::class, 'index'])->name('index');
+        Route::get('/unread-count', [NotificationsController::class, 'unreadCount'])->name('unread-count');
+        Route::get('/recent', [NotificationsController::class, 'recent'])->name('recent');
+        Route::post('/mark-read', [NotificationsController::class, 'markAsRead'])->name('mark-read');
+        Route::post('/mark-all-read', [NotificationsController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::delete('/{notification}', [NotificationsController::class, 'destroy'])->name('destroy');
+        Route::delete('/clear-all', [NotificationsController::class, 'clearAll'])->name('clear-all');
+    });
+
+    // Scheduled Posts Routes
+    Route::get('/scheduled-posts', [ScheduledPostController::class, 'index'])->name('scheduled.index');
+    Route::post('/posts/{post}/schedule', [ScheduledPostController::class, 'store'])->name('scheduled.store');
+    Route::put('/scheduled-posts/{scheduledPost}', [ScheduledPostController::class, 'update'])->name('scheduled.update');
+    Route::delete('/scheduled-posts/{scheduledPost}', [ScheduledPostController::class, 'destroy'])->name('scheduled.destroy');
+    Route::post('/scheduled-posts/{scheduledPost}/retry', [ScheduledPostController::class, 'retry'])->name('scheduled.retry');
 });
 
 // Logout Route

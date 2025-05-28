@@ -5,10 +5,15 @@ An automated content posting system for Blogspot using Laravel and Google's Blog
 ## Features
 
 - OAuth2 Google Authentication
-- Automated content generation
-- Draft management
-- Scheduled posting to Blogspot
-- Modern dashboard interface
+- Automated content generation with AI
+- Draft management and preview
+- Advanced post scheduling system:
+  - Schedule posts for future publication
+  - Manage scheduled posts through a dedicated interface
+  - Automatic publishing via cron job
+  - Retry mechanism for failed publications
+  - Status tracking and notifications
+- Modern, responsive dashboard interface
 
 ## Requirements
 
@@ -16,6 +21,7 @@ An automated content posting system for Blogspot using Laravel and Google's Blog
 - Composer
 - SQLite
 - Google Account with Blogger API access
+- Cron job access for scheduled publishing
 
 ## Installation
 
@@ -53,6 +59,13 @@ GOOGLE_CLIENT_SECRET=your_client_secret
 GOOGLE_REDIRECT_URI=your_callback_url
 ```
 
+6. Set up the scheduler
+Add the following Cron entry to your server:
+```bash
+* * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
+```
+This will run the scheduler every minute to check for and publish any due posts.
+
 ## Usage
 
 1. Start the development server
@@ -62,31 +75,54 @@ php artisan serve
 
 2. Visit `http://localhost:8000` in your browser
 3. Log in with your Google account
-4. Start creating and scheduling posts
+4. Create and manage posts:
+   - Write posts manually or use AI generation
+   - Schedule posts for future publication
+   - Preview posts before publishing
+5. Manage scheduled posts:
+   - View all scheduled posts
+   - Edit scheduling times
+   - Cancel scheduled publications
+   - Monitor publication status
+6. Use the dashboard to:
+   - View post statistics
+   - Track scheduled publications
+   - Monitor failed publications
 
 ## Project Structure
 
 ```
 blogposter/
 ├── app/
+│   ├── Console/
+│   │   ├── Commands/
+│   │   │   └── PublishScheduledPosts.php
+│   │   └── Kernel.php
 │   ├── Http/
 │   │   ├── Controllers/
 │   │   │   ├── GoogleAuthController.php
 │   │   │   ├── BloggerController.php
-│   │   │   └── PostController.php
+│   │   │   ├── PostController.php
+│   │   │   └── ScheduledPostController.php
 │   │   └── Middleware/
 │   │       └── EnsureOAuthTokenValid.php
 │   ├── Models/
 │   │   ├── User.php
 │   │   ├── Post.php
+│   │   ├── ScheduledPost.php
 │   │   └── OAuthToken.php
+│   ├── Policies/
+│   │   ├── PostPolicy.php
+│   │   └── ScheduledPostPolicy.php
 │   └── Services/
 │       ├── BloggerService.php
-│       └── ContentGeneratorService.php
+│       ├── ContentGeneratorService.php
+│       └── SchedulingService.php
 └── database/
     └── migrations/
         ├── create_posts_table.php
-        └── create_oauth_tokens_table.php
+        ├── create_oauth_tokens_table.php
+        └── create_scheduled_posts_table.php
 ```
 
 ## Contributing

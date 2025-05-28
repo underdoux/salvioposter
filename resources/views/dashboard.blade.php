@@ -1,77 +1,98 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="bg-white shadow rounded-lg">
-    <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-800">Dashboard</h2>
+<div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <!-- Posts Overview -->
+        <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900">Posts Overview</h3>
+                <dl class="mt-4 space-y-4">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Total Posts</dt>
+                        <dd class="mt-1 text-3xl font-semibold text-gray-900">{{ auth()->user()->posts()->count() }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Published</dt>
+                        <dd class="mt-1 text-3xl font-semibold text-green-600">{{ auth()->user()->publishedPosts()->count() }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Drafts</dt>
+                        <dd class="mt-1 text-3xl font-semibold text-yellow-600">{{ auth()->user()->draftPosts()->count() }}</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Scheduled Posts -->
+        <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900">Scheduled Posts</h3>
+                <dl class="mt-4 space-y-4">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Pending Publication</dt>
+                        <dd class="mt-1 text-3xl font-semibold text-indigo-600">{{ auth()->user()->scheduledPosts()->pending()->count() }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Successfully Published</dt>
+                        <dd class="mt-1 text-3xl font-semibold text-green-600">{{ auth()->user()->scheduledPosts()->completed()->count() }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Failed</dt>
+                        <dd class="mt-1 text-3xl font-semibold text-red-600">{{ auth()->user()->scheduledPosts()->failed()->count() }}</dd>
+                    </div>
+                </dl>
+                <div class="mt-6">
+                    <a href="{{ route('scheduled.index') }}" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
+                        View all scheduled posts →
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900">Quick Actions</h3>
+                <div class="mt-4 space-y-3">
+                    <a href="{{ route('posts.create') }}" 
+                       class="block w-full text-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                        Create New Post
+                    </a>
+                    <a href="{{ route('posts.index') }}" 
+                       class="block w-full text-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                        Manage Posts
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="p-6">
-        <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div class="bg-gray-50 p-4 rounded-lg">
-                <h3 class="text-sm font-medium text-gray-500">Draft Posts</h3>
-                <p class="mt-2 text-3xl font-semibold text-gray-900">{{ auth()->user()->draftPosts()->count() }}</p>
+    <!-- Recent Activity -->
+    <div class="mt-6">
+        <div class="bg-white shadow-sm rounded-lg divide-y divide-gray-200">
+            <div class="px-6 py-4">
+                <h3 class="text-lg font-medium text-gray-900">Recent Activity</h3>
             </div>
-            <div class="bg-gray-50 p-4 rounded-lg">
-                <h3 class="text-sm font-medium text-gray-500">Published Posts</h3>
-                <p class="mt-2 text-3xl font-semibold text-gray-900">{{ auth()->user()->publishedPosts()->count() }}</p>
-            </div>
-            <div class="bg-gray-50 p-4 rounded-lg">
-                <h3 class="text-sm font-medium text-gray-500">Failed Posts</h3>
-                <p class="mt-2 text-3xl font-semibold text-gray-900">{{ auth()->user()->failedPosts()->count() }}</p>
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex gap-4 mb-6">
-            <a href="#" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
-                Generate New Post
-            </a>
-            <a href="#" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                View All Posts
-            </a>
-        </div>
-
-        <!-- Recent Posts -->
-        <div>
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Recent Posts</h3>
-            
-            @if(auth()->user()->posts()->count() > 0)
-                <div class="bg-white shadow overflow-hidden sm:rounded-md">
-                    <ul role="list" class="divide-y divide-gray-200">
-                        @foreach(auth()->user()->posts()->latest()->take(5)->get() as $post)
-                            <li>
-                                <div class="px-4 py-4 sm:px-6">
-                                    <div class="flex items-center justify-between">
-                                        <div class="truncate">
-                                            <div class="flex text-sm">
-                                                <p class="font-medium text-indigo-600 truncate">{{ $post->title }}</p>
-                                            </div>
-                                            <div class="mt-2 flex">
-                                                <div class="flex items-center text-sm text-gray-500">
-                                                    <span>{{ $post->created_at->format('M d, Y') }}</span>
-                                                    <span class="mx-2">•</span>
-                                                    <span class="capitalize">{{ $post->status }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="ml-2 flex-shrink-0 flex">
-                                            <a href="#" class="font-medium text-indigo-600 hover:text-indigo-500">
-                                                Edit
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </li>
-                        @endforeach
-                    </ul>
+            <div class="px-6 py-4">
+                <div class="space-y-4">
+                    @forelse(auth()->user()->scheduledPosts()->with('post')->latest('scheduled_at')->take(5)->get() as $scheduled)
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">{{ $scheduled->post->title }}</p>
+                                <p class="text-sm text-gray-500">
+                                    Scheduled for {{ $scheduled->formatted_scheduled_date }}
+                                </p>
+                            </div>
+                            <span class="inline-flex rounded-full px-2 text-xs font-semibold leading-5 {{ $scheduled->status_badge_class }}">
+                                {{ ucfirst($scheduled->status) }}
+                            </span>
+                        </div>
+                    @empty
+                        <p class="text-sm text-gray-500">No recent scheduled posts.</p>
+                    @endforelse
                 </div>
-            @else
-                <div class="text-center py-12 bg-gray-50 rounded-lg">
-                    <p class="text-gray-500">No posts yet. Start by generating your first post!</p>
-                </div>
-            @endif
+            </div>
         </div>
     </div>
 </div>

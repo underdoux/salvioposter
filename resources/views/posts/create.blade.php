@@ -91,6 +91,33 @@
                     </p>
                 </div>
 
+                <!-- Scheduling Options -->
+                <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                    <div class="flex items-center">
+                        <input type="checkbox" 
+                               id="schedule_checkbox" 
+                               name="schedule" 
+                               class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="schedule_checkbox" class="ml-2 block text-sm text-gray-900">
+                            Schedule for Future Publication
+                        </label>
+                    </div>
+                    
+                    <div id="schedule_input" class="mt-4 hidden">
+                        <label for="scheduled_at" class="block text-sm font-medium text-gray-700">
+                            Publication Date and Time
+                        </label>
+                        <input type="datetime-local" 
+                               name="scheduled_at" 
+                               id="scheduled_at"
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                               min="{{ now()->format('Y-m-d\TH:i') }}">
+                        <p class="mt-1 text-sm text-gray-500">
+                            Select when you want this post to be automatically published.
+                        </p>
+                    </div>
+                </div>
+
                 <!-- Action Buttons -->
                 <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
                     <a href="{{ route('posts.index') }}" 
@@ -114,6 +141,17 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Scheduling checkbox handler
+    const scheduleCheckbox = document.getElementById('schedule_checkbox');
+    const scheduleInput = document.getElementById('schedule_input');
+    
+    scheduleCheckbox.addEventListener('change', function() {
+        scheduleInput.classList.toggle('hidden', !this.checked);
+        if (this.checked) {
+            document.getElementById('scheduled_at').focus();
+        }
+    });
+
     const generateTitlesBtn = document.getElementById('generateTitles');
     const generateContentBtn = document.getElementById('generateContent');
     const generateFullPostBtn = document.getElementById('generateFullPost');

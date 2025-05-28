@@ -4,14 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\Post;
 use App\Services\BloggerService;
+use App\Services\SchedulingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class PostController extends Controller
 {
     protected $bloggerService;
+    protected $schedulingService;
 
-    public function __construct()
+    public function __construct(SchedulingService $schedulingService)
     {
         $this->middleware('oauth.valid');
     }
@@ -49,6 +51,20 @@ class PostController extends Controller
             'status' => 'draft',
         ]);
 
+        // Handle scheduling if requested
+        if ($request->has('schedule') && $request->filled('scheduled_at')) {
+            try {
+                $this->schedulingService->schedulePost($post, $request->scheduled_at);
+                return redirect()->route('posts.edit', $post)
+                    ->with('success', 'Post created and scheduled successfully!');
+            } catch (\Exception $e) {
+                Log::error('Failed to schedule post: ' . $e->getMessage());
+                return redirect()->route('posts.edit', $post)
+                    ->with('warning', 'Post created but scheduling failed. You can try scheduling again.')
+                    ->with('error', $e->getMessage());
+            }
+        }
+
         return redirect()->route('posts.edit', $post)
             ->with('success', 'Post created successfully!');
     }
@@ -81,12 +97,34 @@ class PostController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string',
+            'scheduled_at' => 'nullable|date|after:now',
         ]);
 
-        $post->update($validated);
+        $post->update([
+            'title' => $validated['title'],
+            'content' => $validated['content'],
+        ]);
+
+        // Handle scheduling
+        if ($request->has('schedule') && $request->filled('scheduled_at')) {
+            try {
+                if ($post->scheduledPost) {
+                    $this->schedulingService->reschedulePost($post->scheduledPost, $request->scheduled_at);
+                    $message = 'Post updated and rescheduled successfully!';
+                } else {
+                    $this->schedulingService->schedulePost($post, $request->scheduled_at);
+                    $message = 'Post updated and scheduled successfully!';
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to schedule post: ' . $e->getMessage());
+                return redirect()->route('posts.edit', $post)
+                    ->with('warning', 'Post updated but scheduling failed.')
+                    ->with('error', $e->getMessage());
+            }
+        }
 
         return redirect()->route('posts.edit', $post)
-            ->with('success', 'Post updated successfully!');
+            ->with('success', $message ?? 'Post updated successfully!');
     }
 
     /**

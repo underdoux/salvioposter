@@ -54,6 +54,63 @@
                     </p>
                 </div>
 
+                <!-- Scheduling Options -->
+                <div class="border-t border-gray-200 pt-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Scheduling</h3>
+                    <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                        @if($post->scheduledPost && $post->scheduledPost->status !== 'completed')
+                            <div class="mb-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">Currently Scheduled</p>
+                                        <p class="text-sm text-gray-500">
+                                            Will be published on {{ $post->scheduledPost->scheduled_at->format('M d, Y h:i A') }}
+                                        </p>
+                                        @if($post->scheduledPost->status === 'failed')
+                                            <p class="mt-1 text-sm text-red-600">
+                                                Last attempt failed: {{ $post->scheduledPost->failure_reason }}
+                                            </p>
+                                        @endif
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <form action="{{ route('scheduled.destroy', $post->scheduledPost) }}" method="POST" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-900 text-sm font-medium">
+                                                Cancel Schedule
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        @else
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       id="schedule_checkbox" 
+                                       name="schedule" 
+                                       class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                <label for="schedule_checkbox" class="ml-2 block text-sm text-gray-900">
+                                    Schedule for Future Publication
+                                </label>
+                            </div>
+                            
+                            <div id="schedule_input" class="mt-4 hidden">
+                                <label for="scheduled_at" class="block text-sm font-medium text-gray-700">
+                                    Publication Date and Time
+                                </label>
+                                <input type="datetime-local" 
+                                       name="scheduled_at" 
+                                       id="scheduled_at"
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                       min="{{ now()->format('Y-m-d\TH:i') }}">
+                                <p class="mt-1 text-sm text-gray-500">
+                                    Select when you want this post to be automatically published.
+                                </p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
                 <!-- Preview -->
                 <div class="border-t border-gray-200 pt-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Preview</h3>
@@ -123,6 +180,19 @@
 
 @push('scripts')
 <script>
+    // Scheduling checkbox handler
+    const scheduleCheckbox = document.getElementById('schedule_checkbox');
+    const scheduleInput = document.getElementById('schedule_input');
+    
+    if (scheduleCheckbox) {
+        scheduleCheckbox.addEventListener('change', function() {
+            scheduleInput.classList.toggle('hidden', !this.checked);
+            if (this.checked) {
+                document.getElementById('scheduled_at').focus();
+            }
+        });
+    }
+
     // Live preview functionality
     const contentInput = document.getElementById('content');
     const titleInput = document.getElementById('title');

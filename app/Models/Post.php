@@ -5,10 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Post extends Model
 {
     use HasFactory, SoftDeletes;
+
+    /**
+     * Get the analytics for the post.
+     */
+    public function analytics(): HasOne
+    {
+        return $this->hasOne(PostAnalytics::class);
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -63,5 +72,21 @@ class Post extends Model
     public function scopeFailed($query)
     {
         return $query->where('status', 'failed');
+    }
+
+    /**
+     * Get the scheduled post associated with this post.
+     */
+    public function scheduledPost(): HasOne
+    {
+        return $this->hasOne(ScheduledPost::class);
+    }
+
+    /**
+     * Check if the post is scheduled for future publication.
+     */
+    public function isScheduled(): bool
+    {
+        return $this->scheduledPost()->where('status', 'pending')->exists();
     }
 }
