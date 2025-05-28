@@ -20,56 +20,62 @@ class ContentGeneratorTest extends TestCase
 
     public function test_can_generate_title()
     {
-        $keywords = ['technology', 'AI', 'future'];
-        $title = $this->contentGenerator->generateTitle($keywords);
+        $topic = 'artificial intelligence';
+        $result = $this->contentGenerator->generateTitle($topic);
         
-        $this->assertNotEmpty($title);
-        $this->assertIsString($title);
+        $this->assertTrue($result['success']);
+        $this->assertNotEmpty($result['titles']);
+        $this->assertIsArray($result['titles']);
+        $this->assertStringContainsString('artificial intelligence', strtolower($result['titles'][0]));
     }
 
     public function test_can_generate_content()
     {
         $title = 'The Future of AI Technology';
-        $content = $this->contentGenerator->generateContent($title);
+        $result = $this->contentGenerator->generateContent($title);
         
-        $this->assertNotEmpty($content);
-        $this->assertIsString($content);
-        $this->assertStringContainsString($title, $content);
+        $this->assertTrue($result['success']);
+        $this->assertNotEmpty($result['content']);
+        $this->assertIsString($result['content']);
+        $this->assertStringContainsString('ai technology', strtolower($result['content']));
     }
 
-    public function test_generates_valid_html_content()
+    public function test_generates_markdown_content()
     {
         $title = 'Test Post';
-        $content = $this->contentGenerator->generateContent($title);
+        $result = $this->contentGenerator->generateContent($title);
         
-        $this->assertStringContainsString('<p>', $content);
-        $this->assertStringContainsString('</p>', $content);
+        $this->assertTrue($result['success']);
+        $this->assertStringContainsString('# Introduction', $result['content']);
+        $this->assertStringContainsString('## ', $result['content']);
     }
 
     public function test_handles_empty_input()
     {
-        $content = $this->contentGenerator->generateContent('');
+        $result = $this->contentGenerator->generateContent('');
         
-        $this->assertNotEmpty($content);
-        $this->assertIsString($content);
+        $this->assertTrue($result['success']);
+        $this->assertNotEmpty($result['content']);
+        $this->assertIsString($result['content']);
     }
 
     public function test_content_meets_minimum_length()
     {
         $title = 'Short Test';
-        $content = $this->contentGenerator->generateContent($title);
+        $result = $this->contentGenerator->generateContent($title);
         
-        $this->assertGreaterThan(100, strlen(strip_tags($content)));
+        $this->assertTrue($result['success']);
+        $this->assertGreaterThan(100, strlen($result['content']));
     }
 
     public function test_content_includes_required_sections()
     {
         $title = 'Complete Blog Post';
-        $content = $this->contentGenerator->generateContent($title);
+        $result = $this->contentGenerator->generateContent($title);
         
-        $this->assertStringContainsString('<h1>', $content);
-        $this->assertStringContainsString('<p>', $content);
-        $this->assertStringContainsString('</h1>', $content);
-        $this->assertStringContainsString('</p>', $content);
+        $this->assertTrue($result['success']);
+        $this->assertStringContainsString('# Introduction', $result['content']);
+        $this->assertStringContainsString('## ', $result['content']);
+        $this->assertStringContainsString('# Conclusion', $result['content']);
     }
 }

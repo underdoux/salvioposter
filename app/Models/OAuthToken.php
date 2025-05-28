@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
 
 class OAuthToken extends Model
@@ -11,16 +12,23 @@ class OAuthToken extends Model
     use HasFactory;
 
     /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
+    protected $table = 'oauth_tokens';
+
+    /**
      * The attributes that are mass assignable.
      *
-     * @var array<int, string>
+     * @var array<string>
      */
     protected $fillable = [
         'user_id',
         'access_token',
         'refresh_token',
         'token_type',
-        'expires_at'
+        'expires_at',
     ];
 
     /**
@@ -35,38 +43,40 @@ class OAuthToken extends Model
     /**
      * Get the user that owns the token.
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
     /**
-     * Check if the access token has expired.
-     *
-     * @return bool
+     * Check if the token has expired.
      */
-    public function hasExpired()
+    public function hasExpired(): bool
     {
         return $this->expires_at->isPast();
     }
 
     /**
-     * Check if the token will expire soon (within 5 minutes).
-     *
-     * @return bool
+     * Check if the token will expire soon (within the next hour).
      */
-    public function willExpireSoon()
+    public function willExpireSoon(): bool
     {
-        return $this->expires_at->subMinutes(5)->isPast();
+        return $this->expires_at->diffInMinutes(now()) < 60;
     }
 
     /**
-     * Get the full access token with token type.
-     *
-     * @return string
+     * Get the number of seconds until the token expires.
      */
-    public function getFullAccessToken()
+    public function getExpiresInAttribute(): int
     {
-        return "{$this->token_type} {$this->access_token}";
+        return max(0, Carbon::now()->diffInSeconds($this->expires_at));
+    }
+
+    /**
+     * Check if the token needs to be refreshed.
+     */
+    public function needsRefresh(): bool
+    {
+        return $this->hasExpired() || $this->willExpireSoon();
     }
 }

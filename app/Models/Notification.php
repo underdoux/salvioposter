@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Notification extends Model
 {
+    use HasFactory;
+
     /**
      * The attributes that are mass assignable.
      *
@@ -19,6 +22,7 @@ class Notification extends Model
         'message',
         'data',
         'read_at',
+        'read',
     ];
 
     /**
@@ -29,6 +33,7 @@ class Notification extends Model
     protected $casts = [
         'data' => 'array',
         'read_at' => 'datetime',
+        'read' => 'boolean',
     ];
 
     /**
@@ -44,7 +49,7 @@ class Notification extends Model
      */
     public function scopeUnread($query)
     {
-        return $query->whereNull('read_at');
+        return $query->where('read', false);
     }
 
     /**
@@ -52,17 +57,18 @@ class Notification extends Model
      */
     public function scopeRead($query)
     {
-        return $query->whereNotNull('read_at');
+        return $query->where('read', true);
     }
 
     /**
      * Mark the notification as read.
      */
-    public function markAsRead(): void
+    public function markAsRead(): bool
     {
-        if (!$this->read_at) {
-            $this->update(['read_at' => now()]);
-        }
+        return $this->update([
+            'read' => true,
+            'read_at' => now(),
+        ]);
     }
 
     /**
@@ -70,7 +76,7 @@ class Notification extends Model
      */
     public function isUnread(): bool
     {
-        return $this->read_at === null;
+        return !$this->read;
     }
 
     /**

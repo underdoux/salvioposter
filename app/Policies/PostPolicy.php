@@ -4,11 +4,14 @@ namespace App\Policies;
 
 use App\Models\Post;
 use App\Models\User;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
 class PostPolicy
 {
+    use HandlesAuthorization;
+
     /**
-     * Determine whether the user can view any posts.
+     * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
@@ -16,7 +19,7 @@ class PostPolicy
     }
 
     /**
-     * Determine whether the user can view the post.
+     * Determine whether the user can view the model.
      */
     public function view(User $user, Post $post): bool
     {
@@ -24,7 +27,7 @@ class PostPolicy
     }
 
     /**
-     * Determine whether the user can create posts.
+     * Determine whether the user can create models.
      */
     public function create(User $user): bool
     {
@@ -32,7 +35,7 @@ class PostPolicy
     }
 
     /**
-     * Determine whether the user can update the post.
+     * Determine whether the user can update the model.
      */
     public function update(User $user, Post $post): bool
     {
@@ -40,9 +43,25 @@ class PostPolicy
     }
 
     /**
-     * Determine whether the user can delete the post.
+     * Determine whether the user can delete the model.
      */
     public function delete(User $user, Post $post): bool
+    {
+        return $user->id === $post->user_id;
+    }
+
+    /**
+     * Determine whether the user can restore the model.
+     */
+    public function restore(User $user, Post $post): bool
+    {
+        return $user->id === $post->user_id;
+    }
+
+    /**
+     * Determine whether the user can permanently delete the model.
+     */
+    public function forceDelete(User $user, Post $post): bool
     {
         return $user->id === $post->user_id;
     }
@@ -52,18 +71,6 @@ class PostPolicy
      */
     public function publish(User $user, Post $post): bool
     {
-        return $user->id === $post->user_id && 
-               $post->status !== 'posted' && 
-               $user->hasValidOAuthToken();
-    }
-
-    /**
-     * Determine whether the user can schedule the post.
-     */
-    public function schedule(User $user, Post $post): bool
-    {
-        return $user->id === $post->user_id && 
-               $post->status !== 'posted' && 
-               !$post->scheduledPost;
+        return $user->id === $post->user_id;
     }
 }

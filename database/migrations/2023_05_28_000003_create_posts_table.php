@@ -16,11 +16,11 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('title');
             $table->text('content');
-            $table->string('status')->default('draft'); // draft, posted, failed
-            $table->string('blogger_post_id')->nullable(); // ID of the post on Blogspot
+            $table->string('status')->default('draft');
+            $table->string('blogger_post_id')->nullable();
+            $table->string('blogger_url')->nullable();
             $table->timestamp('published_at')->nullable();
             $table->timestamps();
-            $table->softDeletes(); // Add soft deletes for post recovery
         });
     }
 

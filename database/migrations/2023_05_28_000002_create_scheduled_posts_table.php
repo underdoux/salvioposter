@@ -11,18 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('notifications', function (Blueprint $table) {
+        Schema::create('scheduled_posts', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('post_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('type'); // analytics_update, post_published, post_failed, etc.
-            $table->string('title');
-            $table->text('message');
-            $table->json('data')->nullable();
-            $table->timestamp('read_at')->nullable();
+            $table->timestamp('scheduled_at');
+            $table->string('status')->default('pending');
+            $table->text('error_message')->nullable();
+            $table->integer('retry_count')->default(0);
+            $table->timestamp('last_attempt_at')->nullable();
             $table->timestamps();
-
-            $table->index(['user_id', 'read_at']);
-            $table->index(['type', 'created_at']);
         });
     }
 
@@ -31,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('notifications');
+        Schema::dropIfExists('scheduled_posts');
     }
 };

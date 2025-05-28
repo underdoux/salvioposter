@@ -8,31 +8,28 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 class Kernel extends ConsoleKernel
 {
     /**
-     * The Artisan commands provided by your application.
-     *
-     * @var array
-     */
-    protected $commands = [
-        Commands\PublishScheduledPosts::class,
-        Commands\SyncPostAnalytics::class,
-    ];
-
-    /**
      * Define the application's command schedule.
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Check for scheduled posts every minute
-        $schedule->command('posts:publish-scheduled')
-                ->everyMinute()
-                ->withoutOverlapping()
-                ->appendOutputTo(storage_path('logs/scheduler.log'));
+        // Process scheduled posts every minute
+        $schedule->command('posts:process-scheduled')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->runInBackground();
 
-        // Sync analytics data every hour
-        $schedule->command('posts:sync-analytics')
-                ->hourly()
-                ->withoutOverlapping()
-                ->appendOutputTo(storage_path('logs/analytics.log'));
+        // Clean up old notifications weekly
+        $schedule->command('notifications:cleanup')
+            ->weekly()
+            ->sundays()
+            ->at('00:00')
+            ->withoutOverlapping();
+
+        // Sync analytics data hourly
+        $schedule->command('analytics:sync')
+            ->hourly()
+            ->withoutOverlapping()
+            ->runInBackground();
     }
 
     /**

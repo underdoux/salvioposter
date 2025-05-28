@@ -5,6 +5,8 @@ use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ScheduledPostController;
 use App\Http\Controllers\ContentGeneratorController;
+use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\NotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,11 +30,15 @@ Route::get('/auth/google', [GoogleAuthController::class, 'redirectToGoogle'])
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback'])
     ->name('auth.google.callback');
 
+Route::get('/login', function () {
+    return view('auth.login');
+})->name('login');
+
 // Protected Routes
-Route::middleware(['auth', 'oauth.valid'])->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\ValidOAuthToken::class])->group(function () {
     // Dashboard
     Route::get('/dashboard', function () {
-        return view('dashboard');
+        return response('Dashboard - Welcome ' . auth()->user()->name);
     })->name('dashboard');
 
     // Post Management Routes
@@ -62,17 +68,19 @@ Route::middleware(['auth', 'oauth.valid'])->group(function () {
         Route::post('/posts/{post}/sync', [AnalyticsController::class, 'sync'])->name('sync');
         Route::get('/chart-data', [AnalyticsController::class, 'getChartData'])->name('chart-data');
         Route::get('/export', [AnalyticsController::class, 'export'])->name('export');
+        Route::get('/posts/{post}/report', [AnalyticsController::class, 'generateReport'])->name('report');
     });
 
     // Notification Routes
     Route::prefix('notifications')->name('notifications.')->group(function () {
-        Route::get('/', [NotificationsController::class, 'index'])->name('index');
-        Route::get('/unread-count', [NotificationsController::class, 'unreadCount'])->name('unread-count');
-        Route::get('/recent', [NotificationsController::class, 'recent'])->name('recent');
-        Route::post('/mark-read', [NotificationsController::class, 'markAsRead'])->name('mark-read');
-        Route::post('/mark-all-read', [NotificationsController::class, 'markAllAsRead'])->name('mark-all-read');
-        Route::delete('/{notification}', [NotificationsController::class, 'destroy'])->name('destroy');
-        Route::delete('/clear-all', [NotificationsController::class, 'clearAll'])->name('clear-all');
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
+        Route::get('/recent', [NotificationController::class, 'recent'])->name('recent');
+        Route::post('/mark-read', [NotificationController::class, 'markAsRead'])->name('mark-read');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::post('/preferences', [NotificationController::class, 'updatePreferences'])->name('preferences');
+        Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
+        Route::delete('/clear-all', [NotificationController::class, 'clearAll'])->name('clear-all');
     });
 
     // Scheduled Posts Routes
