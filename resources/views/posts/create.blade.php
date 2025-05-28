@@ -11,6 +11,53 @@
             @csrf
 
             <div class="space-y-6">
+                <!-- AI Content Generation -->
+                <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">AI Content Generation</h3>
+                    
+                    <!-- Topic Input -->
+                    <div class="mb-4">
+                        <label for="topic" class="block text-sm font-medium text-gray-700">Topic</label>
+                        <div class="mt-1 flex rounded-md shadow-sm">
+                            <input type="text" name="topic" id="topic" 
+                                   class="flex-1 min-w-0 block w-full px-3 py-2 rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                   placeholder="Enter a topic for your blog post">
+                        </div>
+                    </div>
+
+                    <!-- Keywords Input -->
+                    <div class="mb-4">
+                        <label for="keywords" class="block text-sm font-medium text-gray-700">Keywords (comma-separated)</label>
+                        <div class="mt-1">
+                            <input type="text" name="keywords" id="keywords" 
+                                   class="block w-full px-3 py-2 rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                   placeholder="Enter keywords separated by commas">
+                        </div>
+                    </div>
+
+                    <!-- Generation Buttons -->
+                    <div class="flex gap-3">
+                        <button type="button" id="generateTitles"
+                                class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Generate Titles
+                        </button>
+                        <button type="button" id="generateContent"
+                                class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Generate Content
+                        </button>
+                        <button type="button" id="generateFullPost"
+                                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                            Generate Full Post
+                        </button>
+                    </div>
+
+                    <!-- Generated Titles -->
+                    <div id="generatedTitles" class="mt-4 hidden">
+                        <h4 class="text-sm font-medium text-gray-900 mb-2">Generated Titles</h4>
+                        <div class="space-y-2" id="titlesList"></div>
+                    </div>
+                </div>
+
                 <!-- Title -->
                 <div>
                     <label for="title" class="block text-sm font-medium text-gray-700">
@@ -44,21 +91,6 @@
                     </p>
                 </div>
 
-                <!-- AI Content Generation -->
-                <div class="bg-gray-50 p-4 rounded-md">
-                    <h3 class="text-sm font-medium text-gray-900">Need inspiration?</h3>
-                    <div class="mt-2 flex gap-2">
-                        <button type="button" id="generateTitle" 
-                                class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded text-gray-700 bg-white hover:bg-gray-50">
-                            Generate Title
-                        </button>
-                        <button type="button" id="generateContent" 
-                                class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded text-gray-700 bg-white hover:bg-gray-50">
-                            Generate Content
-                        </button>
-                    </div>
-                </div>
-
                 <!-- Action Buttons -->
                 <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
                     <a href="{{ route('posts.index') }}" 
@@ -81,22 +113,116 @@
 
 @push('scripts')
 <script>
-    // Simple content generation preview (to be implemented with AI later)
-    document.getElementById('generateTitle').addEventListener('click', function() {
-        // This is a placeholder. Will be replaced with actual AI generation
-        const titles = [
-            'How to Master Your Craft',
-            '10 Tips for Better Productivity',
-            'The Ultimate Guide to Success'
-        ];
-        document.getElementById('title').value = titles[Math.floor(Math.random() * titles.length)];
+document.addEventListener('DOMContentLoaded', function() {
+    const generateTitlesBtn = document.getElementById('generateTitles');
+    const generateContentBtn = document.getElementById('generateContent');
+    const generateFullPostBtn = document.getElementById('generateFullPost');
+    const titlesList = document.getElementById('titlesList');
+    const generatedTitles = document.getElementById('generatedTitles');
+
+    // Generate Titles
+    generateTitlesBtn.addEventListener('click', async function() {
+        const topic = document.getElementById('topic').value;
+        if (!topic) {
+            alert('Please enter a topic first');
+            return;
+        }
+
+        try {
+            const response = await fetch('{{ route("content.titles") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ topic, count: 3 })
+            });
+
+            const data = await response.json();
+            if (data.titles) {
+                titlesList.innerHTML = data.titles.map(title => `
+                    <div class="flex items-center space-x-2">
+                        <button type="button" class="use-title text-indigo-600 hover:text-indigo-900"
+                                data-title="${title}">Use</button>
+                        <span>${title}</span>
+                    </div>
+                `).join('');
+                generatedTitles.classList.remove('hidden');
+
+                // Add click handlers for "Use" buttons
+                document.querySelectorAll('.use-title').forEach(button => {
+                    button.addEventListener('click', function() {
+                        document.getElementById('title').value = this.dataset.title;
+                    });
+                });
+            }
+        } catch (error) {
+            console.error('Error generating titles:', error);
+            alert('Failed to generate titles. Please try again.');
+        }
     });
 
-    document.getElementById('generateContent').addEventListener('click', function() {
-        // This is a placeholder. Will be replaced with actual AI generation
-        const content = `# Introduction\n\nThis is a sample blog post content.\n\n## Main Points\n\n1. First important point\n2. Second important point\n3. Third important point\n\n## Conclusion\n\nThank you for reading!`;
-        document.getElementById('content').value = content;
+    // Generate Content
+    generateContentBtn.addEventListener('click', async function() {
+        const title = document.getElementById('title').value;
+        const keywords = document.getElementById('keywords').value.split(',').map(k => k.trim());
+
+        if (!title) {
+            alert('Please enter a title first');
+            return;
+        }
+
+        try {
+            const response = await fetch('{{ route("content.generate") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ title, keywords })
+            });
+
+            const data = await response.json();
+            if (data.content) {
+                document.getElementById('content').value = data.content;
+            }
+        } catch (error) {
+            console.error('Error generating content:', error);
+            alert('Failed to generate content. Please try again.');
+        }
     });
+
+    // Generate Full Post
+    generateFullPostBtn.addEventListener('click', async function() {
+        const topic = document.getElementById('topic').value;
+        const keywords = document.getElementById('keywords').value.split(',').map(k => k.trim());
+
+        if (!topic) {
+            alert('Please enter a topic first');
+            return;
+        }
+
+        try {
+            const response = await fetch('{{ route("content.post") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ topic, keywords })
+            });
+
+            const data = await response.json();
+            if (data.title && data.content) {
+                document.getElementById('title').value = data.title;
+                document.getElementById('content').value = data.content;
+            }
+        } catch (error) {
+            console.error('Error generating post:', error);
+            alert('Failed to generate post. Please try again.');
+        }
+    });
+});
 </script>
 @endpush
 @endsection

@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\ContentGeneratorController;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,6 +46,13 @@ Route::middleware(['auth', 'oauth.valid'])->group(function () {
     // Post Publishing and Preview
     Route::post('/posts/{post}/publish', [PostController::class, 'publish'])->name('posts.publish');
     Route::get('/posts/{post}/preview', [PostController::class, 'preview'])->name('posts.preview');
+
+    // Content Generation Routes
+    Route::prefix('content-generator')->name('content.')->group(function () {
+        Route::post('/titles', [ContentGeneratorController::class, 'generateTitles'])->name('titles');
+        Route::post('/content', [ContentGeneratorController::class, 'generateContent'])->name('generate');
+        Route::post('/post', [ContentGeneratorController::class, 'generatePost'])->name('post');
+    });
 });
 
 // Logout Route
