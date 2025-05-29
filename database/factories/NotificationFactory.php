@@ -13,7 +13,15 @@ class NotificationFactory extends Factory
 
     public function definition(): array
     {
-        $types = ['analytics_update', 'post_published', 'post_failed', 'milestone_reached'];
+        $types = [
+            'analytics_update',
+            'post_published',
+            'post_failed',
+            'milestone_reached',
+            'post_created',
+            'post_updated',
+            'post_deleted'
+        ];
         $type = $this->faker->randomElement($types);
 
         return [
@@ -36,6 +44,9 @@ class NotificationFactory extends Factory
             'post_published' => 'Post Published',
             'post_failed' => 'Post Failed',
             'milestone_reached' => 'Milestone Reached',
+            'post_created' => 'Post Created',
+            'post_updated' => 'Post Updated',
+            'post_deleted' => 'Post Deleted',
             default => 'Notification',
         };
     }
@@ -49,6 +60,9 @@ class NotificationFactory extends Factory
             'post_published' => "Your post '{$postTitle}' has been published successfully.",
             'post_failed' => "Failed to publish your post '{$postTitle}'.",
             'milestone_reached' => "Your post '{$postTitle}' has reached a new milestone!",
+            'post_created' => "Your post '{$postTitle}' has been created as a draft.",
+            'post_updated' => "Your post '{$postTitle}' has been updated.",
+            'post_deleted' => "Your post '{$postTitle}' has been deleted.",
             default => $this->faker->sentence(),
         };
     }
@@ -121,6 +135,42 @@ class NotificationFactory extends Factory
                 'title' => $this->getTitleForType('post_published'),
                 'message' => $this->getMessageForType('post_published'),
                 'data' => $this->getDataForType('post_published'),
+            ];
+        });
+    }
+
+    public function postCreated(): self
+    {
+        return $this->state(function (array $attributes) {
+            return [
+                'type' => 'post_created',
+                'title' => $this->getTitleForType('post_created'),
+                'message' => $this->getMessageForType('post_created'),
+                'data' => $this->getDataForType('post_created'),
+            ];
+        });
+    }
+
+    public function postUpdated(): self
+    {
+        return $this->state(function (array $attributes) {
+            return [
+                'type' => 'post_updated',
+                'title' => $this->getTitleForType('post_updated'),
+                'message' => $this->getMessageForType('post_updated'),
+                'data' => $this->getDataForType('post_updated'),
+            ];
+        });
+    }
+
+    public function postDeleted(): self
+    {
+        return $this->state(function (array $attributes) {
+            return [
+                'type' => 'post_deleted',
+                'title' => $this->getTitleForType('post_deleted'),
+                'message' => $this->getMessageForType('post_deleted'),
+                'data' => [],
             ];
         });
     }

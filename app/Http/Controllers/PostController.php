@@ -3,24 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Models\Post;
+use App\Models\Notification;
 use App\Services\BloggerService;
 use App\Services\SchedulingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Foundation\Validation\ValidatesRequests;
-use Illuminate\Routing\Controller as BaseController;
 
-class PostController extends BaseController
+class PostController extends Controller
 {
-    use AuthorizesRequests, ValidatesRequests;
-
     protected $schedulingService;
+    protected $bloggerService;
 
-    public function __construct(SchedulingService $schedulingService)
-    {
+    public function __construct(
+        SchedulingService $schedulingService,
+        BloggerService $bloggerService
+    ) {
         $this->middleware('auth');
         $this->schedulingService = $schedulingService;
+        $this->bloggerService = $bloggerService;
     }
 
     /**
@@ -60,16 +60,8 @@ class PostController extends BaseController
             'status' => 'draft',
         ]);
 
-        // Create notification for post creation
-        Notification::create([
-            'user_id' => auth()->id(),
-            'type' => 'post_created',
-            'title' => 'Post Created',
-            'message' => "Your post '{$post->title}' has been created as a draft.",
-            'data' => ['post_id' => $post->id],
-        ]);
+        Notification::createPostCreated(auth()->user(), $post);
 
-        // Handle scheduling if requested
         if ($request->has('schedule') && $request->filled('scheduled_at')) {
             try {
                 $this->schedulingService->schedulePost($post, $request->scheduled_at);
@@ -78,7 +70,7 @@ class PostController extends BaseController
             } catch (\Exception $e) {
                 Log::error('Failed to schedule post: ' . $e->getMessage());
                 return redirect()->route('posts.edit', $post)
-                    ->with('warning', 'Post created but scheduling failed. You can try scheduling again.')
+                    ->with('warning', 'Post created but scheduling failed.')
                     ->with('error', $e->getMessage());
             }
         }
@@ -123,16 +115,8 @@ class PostController extends BaseController
             'content' => $validated['content'],
         ]);
 
-        // Create notification for post update
-        Notification::create([
-            'user_id' => $post->user->id,
-            'type' => 'post_updated',
-            'title' => 'Post Updated',
-            'message' => "Your post '{$post->title}' has been updated.",
-            'data' => ['post_id' => $post->id],
-        ]);
+        Notification::createPostUpdated($post->user, $post);
 
-        // Handle scheduling
         if ($request->has('schedule') && $request->filled('scheduled_at')) {
             try {
                 if ($post->scheduledPost) {
@@ -163,19 +147,15 @@ class PostController extends BaseController
 
         try {
             if ($post->blogger_post_id) {
-                $bloggerService = new BloggerService($post->user);
-                $bloggerService->deletePost($post);
+                $this->bloggerService->deletePost($post);
             }
+            
+            $title = $post->title;
+            $user = $post->user;
+            
             $post->delete();
-
-            // Create notification for deletion
-            Notification::create([
-                'user_id' => $post->user->id,
-                'type' => 'post_deleted',
-                'title' => 'Post Deleted',
-                'message' => "Your post '{$post->title}' has been deleted.",
-                'data' => [],
-            ]);
+            
+            Notification::createPostDeleted($user, $title);
 
             return redirect()->route('posts.index')
                 ->with('success', 'Post deleted successfully!');
@@ -193,20 +173,14 @@ class PostController extends BaseController
         $this->authorize('update', $post);
 
         try {
-            $bloggerService = new BloggerService($post->user);
-            
             if ($post->blogger_post_id) {
-                $bloggerService->updatePost($post);
+                $this->bloggerService->updatePost($post);
                 $message = 'Post updated on Blogger successfully!';
             } else {
-                $bloggerService->createPost($post);
+                $this->bloggerService->createPost($post);
                 $message = 'Post published to Blogger successfully!';
             }
 
-            // Update post status
-            $post->update(['status' => 'published']);
-            
-            // Create notification for publishing
             Notification::createPostPublished($post->user, $post);
 
             return redirect()->route('posts.show', $post)

@@ -74,13 +74,13 @@ Route::middleware(['auth', \App\Http\Middleware\ValidOAuthToken::class])->group(
     // Notification Routes
     Route::prefix('notifications')->name('notifications.')->group(function () {
         Route::get('/', [NotificationController::class, 'index'])->name('index');
-        Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
+        Route::get('/unread/count', [NotificationController::class, 'unreadCount'])->name('unread-count');
         Route::get('/recent', [NotificationController::class, 'recent'])->name('recent');
-        Route::post('/mark-read', [NotificationController::class, 'markAsRead'])->name('mark-read');
+        Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('mark-read');
         Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
         Route::post('/preferences', [NotificationController::class, 'updatePreferences'])->name('preferences');
         Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
-        Route::delete('/clear-all', [NotificationController::class, 'clearAll'])->name('clear-all');
+        Route::post('/clear-all', [NotificationController::class, 'clearAll'])->name('clear-all');
     });
 
     // Scheduled Posts Routes

@@ -125,6 +125,52 @@ class Notification extends Model
     }
 
     /**
+     * Create a post created notification.
+     */
+    public static function createPostCreated(User $user, Post $post): self
+    {
+        return static::create([
+            'user_id' => $user->id,
+            'type' => 'post_created',
+            'title' => 'Post Created',
+            'message' => "Your post '{$post->title}' has been created as a draft.",
+            'data' => [
+                'post_id' => $post->id,
+            ],
+        ]);
+    }
+
+    /**
+     * Create a post updated notification.
+     */
+    public static function createPostUpdated(User $user, Post $post): self
+    {
+        return static::create([
+            'user_id' => $user->id,
+            'type' => 'post_updated',
+            'title' => 'Post Updated',
+            'message' => "Your post '{$post->title}' has been updated.",
+            'data' => [
+                'post_id' => $post->id,
+            ],
+        ]);
+    }
+
+    /**
+     * Create a post deleted notification.
+     */
+    public static function createPostDeleted(User $user, string $title): self
+    {
+        return static::create([
+            'user_id' => $user->id,
+            'type' => 'post_deleted',
+            'title' => 'Post Deleted',
+            'message' => "Your post '{$title}' has been deleted.",
+            'data' => [],
+        ]);
+    }
+
+    /**
      * Create a post published notification.
      */
     public static function createPostPublished(User $user, Post $post): self

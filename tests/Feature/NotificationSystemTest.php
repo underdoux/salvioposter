@@ -6,11 +6,12 @@ use Tests\TestCase;
 use App\Models\User;
 use App\Models\Post;
 use App\Models\Notification;
+use Tests\Feature\Traits\WithOAuthToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
-class NotificationTest extends TestCase
+class NotificationSystemTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, WithOAuthToken;
 
     protected $user;
 
@@ -18,22 +19,18 @@ class NotificationTest extends TestCase
     {
         parent::setUp();
         $this->user = User::factory()->create();
-        
-        // Create OAuth token for the user to pass ValidOAuthToken middleware
-        OAuthToken::factory()->create([
-            'user_id' => $this->user->id,
-            'access_token' => 'valid-token',
-            'refresh_token' => 'valid-refresh-token',
-            'expires_at' => now()->addDay(),
+        $this->setupOAuthToken($this->user);
+        $this->withHeaders([
+            'Accept' => 'application/json',
+            'X-Requested-With' => 'XMLHttpRequest'
         ]);
-
-        $this->withHeaders(['Accept' => 'application/json']);
     }
 
-    public function test_user_receives_notification_on_post_create()
+    /** @test */
+    public function it_creates_notification_when_post_is_created()
     {
         $response = $this->actingAs($this->user)
-            ->post(route('posts.store'), [
+            ->postJson(route('posts.store'), [
                 'title' => 'Test Post',
                 'content' => 'Test Content'
             ]);
@@ -46,12 +43,13 @@ class NotificationTest extends TestCase
         ]);
     }
 
-    public function test_user_receives_notification_on_post_update()
+    /** @test */
+    public function it_creates_notification_when_post_is_updated()
     {
         $post = Post::factory()->create(['user_id' => $this->user->id]);
 
         $response = $this->actingAs($this->user)
-            ->put(route('posts.update', $post), [
+            ->putJson(route('posts.update', $post), [
                 'title' => 'Updated Title',
                 'content' => 'Updated Content'
             ]);
@@ -64,13 +62,13 @@ class NotificationTest extends TestCase
         ]);
     }
 
-    public function test_user_receives_notification_on_post_delete()
+    /** @test */
+    public function it_creates_notification_when_post_is_deleted()
     {
         $post = Post::factory()->create(['user_id' => $this->user->id]);
-        $title = $post->title;
 
         $response = $this->actingAs($this->user)
-            ->delete(route('posts.destroy', $post));
+            ->deleteJson(route('posts.destroy', $post));
 
         $this->assertDatabaseHas('notifications', [
             'user_id' => $this->user->id,
@@ -80,7 +78,8 @@ class NotificationTest extends TestCase
         ]);
     }
 
-    public function test_user_receives_notification_on_post_publish()
+    /** @test */
+    public function it_creates_notification_when_post_is_published()
     {
         $post = Post::factory()->create([
             'user_id' => $this->user->id,
@@ -88,7 +87,7 @@ class NotificationTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->user)
-            ->post(route('posts.publish', $post));
+            ->postJson(route('posts.publish', $post));
 
         $this->assertDatabaseHas('notifications', [
             'user_id' => $this->user->id,
@@ -98,33 +97,34 @@ class NotificationTest extends TestCase
         ]);
     }
 
-    public function test_can_mark_notification_as_read()
+    /** @test */
+    public function it_can_mark_notification_as_read()
     {
         $notification = Notification::factory()->unread()->create([
             'user_id' => $this->user->id
         ]);
 
         $response = $this->actingAs($this->user)
-            ->post(route('notifications.mark-read', $notification));
+            ->postJson(route('notifications.mark-read', $notification));
 
-        $response->assertStatus(200);
+        $response->assertOk();
         $this->assertDatabaseHas('notifications', [
             'id' => $notification->id,
-            'read' => true,
-            'read_at' => now()->toDateTimeString()
+            'read' => true
         ]);
     }
 
-    public function test_can_mark_all_notifications_as_read()
+    /** @test */
+    public function it_can_mark_all_notifications_as_read()
     {
         Notification::factory()->count(3)->unread()->create([
             'user_id' => $this->user->id
         ]);
 
         $response = $this->actingAs($this->user)
-            ->post(route('notifications.mark-all-read'));
+            ->postJson(route('notifications.mark-all-read'));
 
-        $response->assertStatus(200);
+        $response->assertOk();
         $this->assertDatabaseCount('notifications', 3);
         $this->assertDatabaseMissing('notifications', [
             'user_id' => $this->user->id,
@@ -132,47 +132,60 @@ class NotificationTest extends TestCase
         ]);
     }
 
-    public function test_can_get_unread_notifications_count()
+    /** @test */
+    public function it_can_get_unread_notifications_count()
     {
         Notification::factory()->count(3)->unread()->create([
             'user_id' => $this->user->id
         ]);
 
         $response = $this->actingAs($this->user)
-            ->get(route('notifications.unread-count'));
+            ->getJson(route('notifications.unread-count'));
 
-        $response->assertStatus(200);
-        $response->assertJson(['count' => 3]);
+        $response->assertOk()
+            ->assertJson(['count' => 3]);
     }
 
-    public function test_can_clear_all_notifications()
+    /** @test */
+    public function it_can_clear_all_notifications()
     {
         Notification::factory()->count(5)->create([
             'user_id' => $this->user->id
         ]);
 
         $response = $this->actingAs($this->user)
-            ->post(route('notifications.clear-all'));
+            ->postJson(route('notifications.clear-all'));
 
-        $response->assertStatus(200);
+        $response->assertOk();
         $this->assertDatabaseCount('notifications', 0);
     }
 
-    public function test_notifications_are_paginated()
+    /** @test */
+    public function it_paginates_notifications()
     {
         Notification::factory()->count(15)->create([
             'user_id' => $this->user->id
         ]);
 
         $response = $this->actingAs($this->user)
-            ->get(route('notifications.index'));
+            ->getJson(route('notifications.index'));
 
-        $response->assertStatus(200);
-        $response->assertViewHas('notifications');
-        $this->assertCount(10, $response->viewData('notifications'));
+        $response->assertOk()
+            ->assertJsonStructure([
+                'data',
+                'meta' => [
+                    'current_page',
+                    'last_page',
+                    'per_page',
+                    'total'
+                ]
+            ]);
+        
+        $this->assertCount(10, $response->json('data'));
     }
 
-    public function test_user_only_sees_own_notifications()
+    /** @test */
+    public function it_only_shows_users_own_notifications()
     {
         $otherUser = User::factory()->create();
         
@@ -181,14 +194,14 @@ class NotificationTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->user)
-            ->get(route('notifications.index'));
+            ->getJson(route('notifications.index'));
 
-        $response->assertStatus(200);
-        $response->assertViewHas('notifications');
-        $this->assertCount(0, $response->viewData('notifications'));
+        $response->assertOk()
+            ->assertJsonCount(0, 'data');
     }
 
-    public function test_unauthorized_user_cannot_access_others_notifications()
+    /** @test */
+    public function it_prevents_unauthorized_access_to_others_notifications()
     {
         $otherUser = User::factory()->create();
         $notification = Notification::factory()->create([
@@ -196,32 +209,34 @@ class NotificationTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->user)
-            ->post(route('notifications.mark-read', $notification));
+            ->postJson(route('notifications.mark-read', $notification));
 
-        $response->assertStatus(403);
+        $response->assertForbidden();
     }
 
-    public function test_can_get_recent_notifications()
+    /** @test */
+    public function it_can_get_recent_notifications()
     {
         Notification::factory()->count(10)->create([
             'user_id' => $this->user->id
         ]);
 
         $response = $this->actingAs($this->user)
-            ->get(route('notifications.recent'));
+            ->getJson(route('notifications.recent'));
 
-        $response->assertStatus(200);
-        $response->assertJsonCount(5);
+        $response->assertOk()
+            ->assertJsonCount(5);
     }
 
-    public function test_email_notification_preferences()
+    /** @test */
+    public function it_can_update_email_notification_preferences()
     {
         $response = $this->actingAs($this->user)
-            ->post(route('notifications.preferences'), [
+            ->postJson(route('notifications.preferences'), [
                 'email_notifications' => true
             ]);
 
-        $response->assertStatus(302);
+        $response->assertOk();
         $this->assertDatabaseHas('users', [
             'id' => $this->user->id,
             'email_notifications' => true

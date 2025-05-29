@@ -6,11 +6,12 @@ use Tests\TestCase;
 use App\Models\User;
 use App\Models\Post;
 use App\Models\Notification;
+use Tests\Feature\Traits\WithOAuthToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
-class NotificationTest extends TestCase
+class NotificationsTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, WithOAuthToken;
 
     protected $user;
 
@@ -18,15 +19,7 @@ class NotificationTest extends TestCase
     {
         parent::setUp();
         $this->user = User::factory()->create();
-        
-        // Create OAuth token for the user to pass ValidOAuthToken middleware
-        OAuthToken::factory()->create([
-            'user_id' => $this->user->id,
-            'access_token' => 'valid-token',
-            'refresh_token' => 'valid-refresh-token',
-            'expires_at' => now()->addDay(),
-        ]);
-
+        $this->setupOAuthToken($this->user);
         $this->withHeaders(['Accept' => 'application/json']);
     }
 
@@ -67,7 +60,6 @@ class NotificationTest extends TestCase
     public function test_user_receives_notification_on_post_delete()
     {
         $post = Post::factory()->create(['user_id' => $this->user->id]);
-        $title = $post->title;
 
         $response = $this->actingAs($this->user)
             ->delete(route('posts.destroy', $post));
@@ -168,8 +160,7 @@ class NotificationTest extends TestCase
             ->get(route('notifications.index'));
 
         $response->assertStatus(200);
-        $response->assertViewHas('notifications');
-        $this->assertCount(10, $response->viewData('notifications'));
+        $response->assertJsonCount(10, 'data');
     }
 
     public function test_user_only_sees_own_notifications()
@@ -184,8 +175,7 @@ class NotificationTest extends TestCase
             ->get(route('notifications.index'));
 
         $response->assertStatus(200);
-        $response->assertViewHas('notifications');
-        $this->assertCount(0, $response->viewData('notifications'));
+        $response->assertJsonCount(0, 'data');
     }
 
     public function test_unauthorized_user_cannot_access_others_notifications()

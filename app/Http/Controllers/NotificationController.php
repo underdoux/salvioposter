@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Notification;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Routing\Controller as BaseController;
@@ -20,27 +21,32 @@ class NotificationController extends BaseController
     /**
      * Display a listing of notifications.
      */
-    public function index()
+    public function index(Request $request): JsonResponse
     {
         $notifications = auth()->user()
             ->notifications()
             ->latest()
             ->paginate(10);
 
-        return view('notifications.index', compact('notifications'));
+        return response()->json([
+            'data' => $notifications->items(),
+            'meta' => [
+                'current_page' => $notifications->currentPage(),
+                'last_page' => $notifications->lastPage(),
+                'per_page' => $notifications->perPage(),
+                'total' => $notifications->total()
+            ]
+        ]);
     }
 
     /**
      * Mark a notification as read.
      */
-    public function markAsRead(Notification $notification)
+    public function markAsRead(Notification $notification): JsonResponse
     {
         $this->authorize('update', $notification);
 
-        $notification->update([
-            'read_at' => now(),
-            'read' => true
-        ]);
+        $notification->markAsRead();
 
         return response()->json(['success' => true]);
     }
@@ -48,7 +54,7 @@ class NotificationController extends BaseController
     /**
      * Mark all notifications as read.
      */
-    public function markAllAsRead()
+    public function markAllAsRead(): JsonResponse
     {
         auth()->user()
             ->notifications()
@@ -64,7 +70,7 @@ class NotificationController extends BaseController
     /**
      * Delete all notifications.
      */
-    public function clearAll()
+    public function clearAll(): JsonResponse
     {
         auth()->user()->notifications()->delete();
 
@@ -72,9 +78,21 @@ class NotificationController extends BaseController
     }
 
     /**
+     * Delete a specific notification.
+     */
+    public function destroy(Notification $notification): JsonResponse
+    {
+        $this->authorize('delete', $notification);
+        
+        $notification->delete();
+        
+        return response()->json(['success' => true]);
+    }
+
+    /**
      * Get unread notifications count.
      */
-    public function unreadCount()
+    public function unreadCount(): JsonResponse
     {
         $count = auth()->user()
             ->notifications()
@@ -87,7 +105,7 @@ class NotificationController extends BaseController
     /**
      * Get recent notifications.
      */
-    public function recent()
+    public function recent(): JsonResponse
     {
         $notifications = auth()->user()
             ->notifications()
@@ -99,19 +117,9 @@ class NotificationController extends BaseController
     }
 
     /**
-     * Delete a specific notification.
-     */
-    public function destroy(Notification $notification)
-    {
-        $this->authorize('delete', $notification);
-        $notification->delete();
-        return response()->json(['success' => true]);
-    }
-
-    /**
      * Update notification preferences.
      */
-    public function updatePreferences(Request $request)
+    public function updatePreferences(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'email_notifications' => 'required|boolean',
@@ -121,7 +129,6 @@ class NotificationController extends BaseController
             'email_notifications' => $validated['email_notifications'],
         ]);
 
-        return redirect()->back()
-            ->with('success', 'Notification preferences updated successfully!');
+        return response()->json(['success' => true]);
     }
 }
